@@ -6,11 +6,11 @@ import java.nio.file.Files;
 class FileSender {
     private static final int BUF_SIZE = 8192;
     private Socket socket;
-    private BufferedReader in;
-    private DataOutputStream out;
     private File file;
     private byte[] data;
-    FileInputStream fileInputStream;
+    private DataOutputStream out;
+    private DataInputStream in;
+    private FileInputStream fileInputStream;
 
     FileSender(int port, InetAddress address, File file) throws IOException {
         this.file = file;
@@ -18,25 +18,34 @@ class FileSender {
         data = new byte[BUF_SIZE];
     }
 
-    void SendFile() throws IOException {
-        long sent = 0;
+    void SendFile() throws Exception {
         try {
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            int count;
             out = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
+            in = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
             fileInputStream = new FileInputStream(file);
 
             out.writeUTF(file.getName());
             out.writeLong(file.length());
-            while (fileInputStream.read(data) != -1) {
-                out.write(data);
+            while ((count = fileInputStream.read(data)) != -1) {
+                out.write(data, 0, count);
             }
             out.flush();
-        } catch (Exception e) {
+
+            boolean error = in.readBoolean();
+            if (!error) {
+                System.out.println("File sent");
+            } else {
+                System.out.println("Error was occurred");
+            }
+        }
+        catch (Exception e) {
             e.printStackTrace();
         }
         finally {
-            in.close();
             out.close();
+            in.close();
+            socket.close();
             fileInputStream.close();
         }
     }
